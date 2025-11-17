@@ -1,0 +1,116 @@
+import { Node, Edge } from 'reactflow';
+import { activities, applications, downstreamApps, getActivitiesForApplication } from './activityData';
+
+// Generate application detail view (when user clicks an app in column view)
+export function generateApplicationDetailView(
+  businessArea: string, 
+  applicationId: string, 
+  businessDate: Date
+) {
+  const nodes: Node[] = [];
+  const edges: Edge[] = [];
+
+  const isToday = businessDate.toDateString() === new Date().toDateString();
+  
+  // Get activities for this app and business area
+  const appActivities = getActivitiesForApplication(applicationId).filter(
+    a => a.businessArea === businessArea
+  );
+
+  // Layout constants
+  const JOB_NODE_HEIGHT = 80;
+  const JOB_NODE_SPACING = 30;
+  const COLUMN_SPACING = 400;
+
+  // Create activity/job nodes
+  appActivities.forEach((activity, index) => {
+    const status = isToday 
+      ? Math.random() > 0.2 ? 'met' : Math.random() > 0.5 ? 'missed' : 'in-progress'
+      : Math.random() > 0.15 ? 'met' : 'missed';
+
+    nodes.push({
+      id: activity.id,
+      type: 'job',
+      position: { 
+        x: 100, 
+        y: index * (JOB_NODE_HEIGHT + JOB_NODE_SPACING) 
+      },
+      data: {
+        label: activity.name,
+        jobId: activity.id,
+        status: status,
+        slaTime: `${activity.expectedStartTime} - ${activity.expectedEndTime}`,
+        progress: status === 'in-progress' ? Math.random() * 100 : undefined,
+      },
+    });
+
+    // Create edge to next application in flow if app sends data somewhere
+    const app = applications.find(a => a.id === applicationId);
+    if (app?.sendsDataTo && app.sendsDataTo.length > 0) {
+      const targetApp = app.sendsDataTo[0]; // Use first destination
+      
+      // Add target app node if not exists
+      if (!nodes.find(n => n.id === `${targetApp}-node`)) {
+        const targetAppData = applications.find(a => a.id === targetApp || a.name === targetApp);
+        nodes.push({
+          id: `${targetApp}-node`,
+          type: 'application',
+          position: { x: 100 + COLUMN_SPACING, y: 100 },
+          data: {
+            label: targetAppData?.name || targetApp,
+            application: targetApp,
+            activityCount: 10,
+            slaMet: 8,
+            slaMissed: 2,
+            inProgress: isToday ? 1 : 0,
+          },
+        });
+      }
+
+      edges.push({
+        id: `edge-${activity.id}-to-${targetApp}`,
+        source: activity.id,
+        target: `${targetApp}-node`,
+        animated: isToday && status === 'in-progress',
+        style: { stroke: '#94a3b8', strokeWidth: 2 },
+        type: 'smoothstep',
+      });
+    }
+  });
+
+  // Special handling: If this is a hub node or flows to downstream, show the flow
+  const app = applications.find(a => a.id === applicationId);
+  
+  // Add downstream consumers if Kessel or DDS-Downstream
+  if (applicationId === 'Kessel' || applicationId === 'DDS-Downstream') {
+    downstreamApps.forEach((consumer, index) => {
+      nodes.push({
+        id: `${consumer.id}-node`,
+        type: 'application',
+        position: { 
+          x: 100 + COLUMN_SPACING * 2, 
+          y: index * 150 
+        },
+        data: {
+          label: consumer.name,
+          application: consumer.name,
+          activityCount: 5,
+          slaMet: 4,
+          slaMissed: 1,
+          inProgress: isToday ? 1 : 0,
+        },
+      });
+
+      edges.push({
+        id: `edge-${applicationId}-to-${consumer.id}`,
+        source: nodes.find(n => n.type === 'job')?.id || `${applicationId}-main`,
+        target: `${consumer.id}-node`,
+        animated: isToday,
+        style: { stroke: '#10b981', strokeWidth: 2 },
+        type: 'smoothstep',
+      });
+    });
+  }
+
+  return { nodes, edges };
+}

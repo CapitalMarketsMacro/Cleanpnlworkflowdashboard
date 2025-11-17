@@ -11,15 +11,21 @@ import ReactFlow, {
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { toast, Toaster } from 'sonner@2.0.3';
-import { ThemeProvider } from './utils/ThemeContext';
+import { ThemeProvider, useTheme } from './utils/ThemeContext';
 import { BusinessAreaNode } from './components/BusinessAreaNode';
 import { ActivityNode } from './components/ActivityNode';
 import { ApplicationNode } from './components/ApplicationNode';
 import { JobNode } from './components/JobNode';
+import { SwimLaneNode } from './components/SwimLaneNode';
+import { HexagonNode } from './components/HexagonNode';
+import { ColumnHeaderNode } from './components/ColumnHeaderNode';
+import { ColumnSeparatorNode } from './components/ColumnSeparatorNode';
 import { Dashboard } from './components/Dashboard';
 import { BusinessAreaSidebar } from './components/BusinessAreaSidebar';
 import { ApplicationSidebar } from './components/ApplicationSidebar';
 import { generateWorkflowData } from './utils/newDataGenerator';
+import { generateSwimLaneLayout, generateApplicationDetailView } from './utils/swimlaneLayoutGenerator';
+import { generateVerticalColumnLayout } from './utils/verticalColumnLayoutGenerator';
 import { 
   businessAreas, 
   getActivitiesForBusinessArea,
@@ -32,23 +38,50 @@ const nodeTypes = {
   activity: ActivityNode,
   application: ApplicationNode,
   job: JobNode,
+  swimlane: SwimLaneNode,
+  hexagon: HexagonNode,
+  columnHeader: ColumnHeaderNode,
+  columnSeparator: ColumnSeparatorNode,
 };
 
-export default function App() {
+function AppContent() {
+  const { theme } = useTheme();
   const [allNodes, setAllNodes] = useState<Node[]>([]);
   const [allEdges, setAllEdges] = useState<Edge[]>([]);
   const [lastUpdate, setLastUpdate] = useState(new Date());
   const [businessDate, setBusinessDate] = useState<Date>(new Date());
-  const [selectedBusinessArea, setSelectedBusinessArea] = useState<string | null>(null);
+  const [selectedBusinessArea, setSelectedBusinessArea] = useState<string | null>('Commodities');
   const [selectedApplication, setSelectedApplication] = useState<string | null>(null);
 
   // Initialize data based on business date and selections
   useEffect(() => {
-    const { nodes: initialNodes, edges: initialEdges } = generateWorkflowData(
-      businessDate,
-      selectedBusinessArea,
-      selectedApplication
-    );
+    let initialNodes: Node[];
+    let initialEdges: Edge[];
+
+    if (!selectedBusinessArea) {
+      // Show all business areas
+      const result = generateWorkflowData(businessDate, null, null);
+      initialNodes = result.nodes;
+      initialEdges = result.edges;
+    } else if (selectedBusinessArea && !selectedApplication) {
+      // Show vertical column layout for selected business area
+      const result = generateVerticalColumnLayout(
+        selectedBusinessArea,
+        businessDate
+      );
+      initialNodes = result.nodes;
+      initialEdges = result.edges;
+    } else {
+      // Show application detail view
+      const result = generateApplicationDetailView(
+        selectedBusinessArea,
+        selectedApplication!,
+        businessDate
+      );
+      initialNodes = result.nodes;
+      initialEdges = result.edges;
+    }
+
     setAllNodes(initialNodes);
     setAllEdges(initialEdges);
     setLastUpdate(new Date());
@@ -144,9 +177,9 @@ export default function App() {
       
       return {
         id: appId,
-        name: appId,
+        name: app?.name || appId,
         activityCount: appActivities.length,
-        activityTypes: app?.activityTypes || [],
+        activityTypes: [app?.swimlane || 'Unknown'],
         slaMet,
         slaMissed,
       };
@@ -176,9 +209,13 @@ export default function App() {
       setSelectedBusinessArea(baName);
       setSelectedApplication(null);
       toast.success(`Viewing ${baName} activities by type`);
-    } else if (node.type === 'application') {
+    } else if (node.type === 'application' || node.type === 'hexagon') {
       // Navigate to application detail (activity & jobs view)
-      const appId = node.data.label;
+      const appId = node.data.label || node.data.application;
+      
+      // Skip if it's a hub node or doesn't have an app name
+      if (!appId || appId === '') return;
+      
       setSelectedApplication(appId);
       
       // If we're in the overview and don't have a business area selected,
@@ -212,10 +249,9 @@ export default function App() {
   }, [selectedBusinessArea, selectedApplication]);
 
   return (
-    <ThemeProvider>
-      <div className="w-full h-screen flex flex-col bg-slate-50 dark:bg-slate-900 transition-colors">
-        <Toaster position="top-right" richColors />
-        <Dashboard 
+    <div className="w-full h-screen flex flex-col bg-slate-50 dark:bg-slate-900 transition-colors">
+      <Toaster position="top-right" richColors />
+      <Dashboard 
         stats={stats} 
         lastUpdate={lastUpdate} 
         businessDate={businessDate}
@@ -251,47 +287,103 @@ export default function App() {
             fitView
             minZoom={0.1}
             maxZoom={1.5}
-            defaultViewport={{ x: 0, y: 0, zoom: 0.8 }}
+            defaultViewport={{ 
+              x: 0, 
+              y: 0, 
+              zoom: selectedBusinessArea && !selectedApplication ? 0.7 : 0.8 
+            }}
             key={`${selectedBusinessArea}-${selectedApplication}`}
           >
-            <Background variant={BackgroundVariant.Dots} gap={12} size={1} />
-            <Controls />
+            <Background 
+              variant={BackgroundVariant.Dots} 
+              gap={12} 
+              size={1} 
+              color={theme === 'dark' ? '#475569' : '#e2e8f0'}
+              className={theme === 'dark' ? 'bg-slate-900' : 'bg-slate-100'}
+            />
+            <Controls className={theme === 'dark' ? 'bg-slate-800 border-slate-700' : ''} />
             <MiniMap
               nodeStrokeWidth={3}
+              className={theme === 'dark' ? 'bg-slate-800 border border-slate-700' : 'bg-white border border-slate-200'}
               zoomable
               pannable
-              className="bg-white border border-slate-200"
             />
-            <Panel position="bottom-right" className="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 m-4">
-              <div className="space-y-3">
-                <div className="border-b border-slate-200 dark:border-slate-700 pb-2 mb-2">
-                  <span className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Status Legend</span>
+            <Panel position="bottom-right" className="bg-white dark:bg-slate-800 p-3 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 m-4">
+              <div className="space-y-2">
+                <div className="border-b border-slate-200 dark:border-slate-700 pb-1.5 mb-1.5">
+                  <span className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                    {selectedBusinessArea && !selectedApplication ? 'Column View' : 'Status Legend'}
+                  </span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 bg-green-500 rounded"></div>
-                  <span className="text-sm text-slate-700 dark:text-slate-300">SLA Met</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 bg-red-500 rounded"></div>
-                  <span className="text-sm text-slate-700 dark:text-slate-300">SLA Missed</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 bg-yellow-500 rounded"></div>
-                  <span className="text-sm text-slate-700 dark:text-slate-300">In Progress</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 bg-slate-300 dark:bg-slate-600 rounded"></div>
-                  <span className="text-sm text-slate-700 dark:text-slate-300">Not Started</span>
-                </div>
-                <div className="border-t border-slate-200 dark:border-slate-700 pt-2 mt-2">
-                  <span className="text-xs text-slate-500 dark:text-slate-400 italic">💡 Double-click nodes to drill down</span>
+                {selectedBusinessArea && !selectedApplication ? (
+                  <>
+                    <div className="text-xs text-slate-600 dark:text-slate-400 mb-2 pb-2 border-b border-slate-200 dark:border-slate-600">
+                      <div className="mb-1">📊 <span className="font-semibold">Data Flow:</span></div>
+                      <div className="pl-4 text-[10px]">Trade → Risk → DDS → Kessel → Consumers</div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <svg width="16" height="12" className="flex-shrink-0">
+                        <path d="M 4,0 L 12,0 L 16,6 L 12,12 L 4,12 L 0,6 Z" fill="#fecdd3" stroke="#f43f5e" strokeWidth="1.5"/>
+                      </svg>
+                      <span className="text-xs text-slate-700 dark:text-slate-300">Trade Events</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <svg width="16" height="12" className="flex-shrink-0">
+                        <path d="M 4,0 L 12,0 L 16,6 L 12,12 L 4,12 L 0,6 Z" fill="#bfdbfe" stroke="#3b82f6" strokeWidth="1.5"/>
+                      </svg>
+                      <span className="text-xs text-slate-700 dark:text-slate-300">Risk Engines</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <svg width="16" height="12" className="flex-shrink-0">
+                        <path d="M 4,0 L 12,0 L 16,6 L 12,12 L 4,12 L 0,6 Z" fill="#dc2626" stroke="#991b1b" strokeWidth="1.5"/>
+                      </svg>
+                      <span className="text-xs text-slate-700 dark:text-slate-300">Kessel (Aggregation)</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <svg width="16" height="12" className="flex-shrink-0">
+                        <path d="M 4,0 L 12,0 L 16,6 L 12,12 L 4,12 L 0,6 Z" fill="#86efac" stroke="#16a34a" strokeWidth="1.5"/>
+                      </svg>
+                      <span className="text-xs text-slate-700 dark:text-slate-300">Consumers</span>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 bg-green-500 rounded"></div>
+                      <span className="text-xs text-slate-700 dark:text-slate-300">SLA Met</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 bg-red-500 rounded"></div>
+                      <span className="text-xs text-slate-700 dark:text-slate-300">SLA Missed</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 bg-yellow-500 rounded"></div>
+                      <span className="text-xs text-slate-700 dark:text-slate-300">In Progress</span>
+                    </div>
+                  </>
+                )}
+                {!selectedBusinessArea || selectedApplication ? (
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 bg-slate-300 dark:bg-slate-600 rounded"></div>
+                    <span className="text-xs text-slate-700 dark:text-slate-300">Not Started</span>
+                  </div>
+                ) : null}
+                <div className="border-t border-slate-200 dark:border-slate-700 pt-1.5 mt-1.5">
+                  <span className="text-xs text-slate-500 dark:text-slate-400 italic">💡 Double-click to drill down</span>
                 </div>
               </div>
             </Panel>
           </ReactFlow>
         </div>
       </div>
-      </div>
+    </div>
+  );
+}
+
+export default function App() {
+  return (
+    <ThemeProvider>
+      <AppContent />
     </ThemeProvider>
   );
 }

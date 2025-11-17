@@ -49,7 +49,9 @@ const statusConfig = {
 };
 
 export function JobNode({ data }: JobNodeProps) {
-  const config = statusConfig[data.status];
+  // Provide default status if undefined or invalid
+  const status = data.status && statusConfig[data.status] ? data.status : 'not-started';
+  const config = statusConfig[status];
   const Icon = config.icon;
 
   return (

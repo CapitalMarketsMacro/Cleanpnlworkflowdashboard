@@ -218,6 +218,7 @@ export function generateWorkflowData(
           position: { x: 800, y: activityIndex * 120 + i * 40 },
           data: {
             label: `${activity.id}-Job-${i + 1}`,
+            jobId: `JOB-${1000 + nodeId}`,
             status: jobStatus,
             progress: jobStatus === 'in-progress' ? Math.random() * 100 : 0,
           },

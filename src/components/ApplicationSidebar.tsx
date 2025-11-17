@@ -27,31 +27,30 @@ export function ApplicationSidebar({
 }: ApplicationSidebarProps) {
   return (
     <div className="w-80 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 flex flex-col h-full">
-      <div className="p-6 border-b border-slate-200 dark:border-slate-700">
+      <div className="p-4 border-b border-slate-200 dark:border-slate-700">
         <Button
           variant="ghost"
           size="sm"
           onClick={onBack}
-          className="mb-3 -ml-2"
+          className="mb-2 -ml-2 h-7"
         >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Business Areas
+          <ArrowLeft className="w-3.5 h-3.5 mr-1.5" />
+          <span className="text-xs">Back</span>
         </Button>
-        <div className="flex items-center gap-2 mb-2">
-          <Package className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+        <div className="flex items-center gap-2">
+          <Package className="w-4 h-4 text-blue-600 dark:text-blue-400" />
           <h2 className="text-slate-900 dark:text-slate-100">{businessAreaName}</h2>
         </div>
-        <p className="text-sm text-slate-600 dark:text-slate-400">Select an application to view activities</p>
       </div>
       
-      <div className="flex-1 overflow-y-auto p-4">
+      <div className="flex-1 overflow-y-auto p-3">
         <Button
           variant={selectedApp === null ? 'default' : 'outline'}
-          className="w-full justify-between mb-2"
+          className="w-full justify-between mb-2 h-8 text-xs"
           onClick={() => onSelectApp(null)}
         >
           <span>All Applications</span>
-          {selectedApp === null && <ChevronRight className="w-4 h-4" />}
+          {selectedApp === null && <ChevronRight className="w-3.5 h-3.5" />}
         </Button>
         
         <div className="space-y-2 mt-4">
@@ -66,54 +65,51 @@ export function ApplicationSidebar({
                 key={app.id}
                 onClick={() => onSelectApp(app.id)}
                 className={`
-                  w-full p-4 rounded-lg border-2 text-left transition-all
+                  w-full p-3 rounded-lg border-2 text-left transition-all
                   ${isSelected 
                     ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-400' 
                     : 'border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 hover:border-slate-300 dark:hover:border-slate-500 hover:bg-slate-50 dark:hover:bg-slate-600'
                   }
                 `}
               >
-                <div className="flex items-center justify-between mb-2">
-                  <span className={`${isSelected ? 'text-blue-900 dark:text-blue-300' : 'text-slate-900 dark:text-slate-100'}`}>
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className={`text-sm ${isSelected ? 'text-blue-900 dark:text-blue-300' : 'text-slate-900 dark:text-slate-100'}`}>
                     {app.name}
                   </span>
-                  {isSelected && <ChevronRight className="w-4 h-4 text-blue-600 dark:text-blue-400" />}
+                  {isSelected && <ChevronRight className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />}
                 </div>
                 
-                <div className="flex flex-wrap gap-1 mb-2">
+                <div className="flex flex-wrap gap-1 mb-1.5">
                   {app.activityTypes.map((type) => (
                     <span
                       key={type}
-                      className="text-xs px-2 py-0.5 bg-slate-100 dark:bg-slate-600 text-slate-700 dark:text-slate-300 rounded"
+                      className="text-[10px] px-1.5 py-0.5 bg-slate-100 dark:bg-slate-600 text-slate-700 dark:text-slate-300 rounded"
                     >
                       {type}
                     </span>
                   ))}
                 </div>
                 
-                <div className="flex items-center gap-3 text-xs mb-2">
-                  <div className="flex items-center gap-1">
-                    <div className="w-2 h-2 bg-slate-400 dark:bg-slate-500 rounded-full"></div>
-                    <span className="text-slate-600 dark:text-slate-400">{app.activityCount} activities</span>
+                <div className="flex items-center gap-2 text-xs mb-1.5">
+                  <div className="flex items-center gap-0.5">
+                    <div className="w-1.5 h-1.5 bg-slate-400 dark:bg-slate-500 rounded-full"></div>
+                    <span className="text-slate-600 dark:text-slate-400">{app.activityCount}</span>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <div className="w-2 h-2 bg-green-500 dark:bg-green-400 rounded-full"></div>
+                  <div className="flex items-center gap-0.5">
+                    <div className="w-1.5 h-1.5 bg-green-500 dark:bg-green-400 rounded-full"></div>
                     <span className="text-slate-600 dark:text-slate-400">{app.slaMet}</span>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <div className="w-2 h-2 bg-red-500 dark:bg-red-400 rounded-full"></div>
+                  <div className="flex items-center gap-0.5">
+                    <div className="w-1.5 h-1.5 bg-red-500 dark:bg-red-400 rounded-full"></div>
                     <span className="text-slate-600 dark:text-slate-400">{app.slaMissed}</span>
                   </div>
+                  <span className="text-slate-900 dark:text-slate-100 ml-auto">{successRate}%</span>
                 </div>
                 
                 <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs text-slate-600 dark:text-slate-400">Success Rate</span>
-                    <span className="text-xs text-slate-900 dark:text-slate-100">{successRate}%</span>
-                  </div>
-                  <div className="w-full bg-slate-200 dark:bg-slate-600 rounded-full h-1.5">
+                  <div className="w-full bg-slate-200 dark:bg-slate-600 rounded-full h-1">
                     <div
-                      className={`h-1.5 rounded-full ${
+                      className={`h-1 rounded-full ${
                         parseInt(successRate) >= 80 ? 'bg-green-500' :
                         parseInt(successRate) >= 60 ? 'bg-yellow-500' :
                         'bg-red-500'
