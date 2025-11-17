@@ -24,9 +24,19 @@ export function generateApplicationDetailView(
 
   // Create activity/job nodes
   appActivities.forEach((activity, index) => {
-    const status = isToday 
-      ? Math.random() > 0.2 ? 'met' : Math.random() > 0.5 ? 'missed' : 'in-progress'
-      : Math.random() > 0.15 ? 'met' : 'missed';
+    // Status distribution: 70% met, 15% in-progress, 10% missed, 5% not-started
+    const randomValue = Math.random();
+    let status: 'met' | 'missed' | 'in-progress' | 'not-started';
+    
+    if (randomValue < 0.70) {
+      status = 'met';
+    } else if (randomValue < 0.85) {
+      status = 'in-progress';
+    } else if (randomValue < 0.95) {
+      status = 'missed';
+    } else {
+      status = 'not-started';
+    }
 
     nodes.push({
       id: activity.id,

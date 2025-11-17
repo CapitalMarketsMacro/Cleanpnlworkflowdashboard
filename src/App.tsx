@@ -127,30 +127,38 @@ function AppContent() {
     return () => clearInterval(interval);
   }, [businessDate]);
 
-  // Calculate statistics
+  // Calculate statistics based on activities
   const stats = useMemo(() => {
-    return allNodes.reduce(
-      (acc, node) => {
-        if (node.type === 'job' || (node.type === 'activity' && node.data.status)) {
-          acc.total++;
-          if (node.data.status === 'met') acc.met++;
-          if (node.data.status === 'missed') acc.missed++;
-          if (node.data.status === 'not-started') acc.notStarted++;
-          if (node.data.status === 'in-progress') acc.inProgress++;
-        }
-        return acc;
-      },
-      { total: 0, met: 0, missed: 0, notStarted: 0, inProgress: 0 }
-    );
-  }, [allNodes]);
+    // Get activities for current business area or all activities
+    const relevantActivities = selectedBusinessArea 
+      ? getActivitiesForBusinessArea(selectedBusinessArea)
+      : activities;
+    
+    const total = relevantActivities.length;
+    
+    // Simulate statuses based on time (in real app, this would come from actual job execution data)
+    // For demo: 70% met, 15% in-progress, 10% missed, 5% not-started
+    const met = Math.floor(total * 0.70);
+    const inProgress = Math.floor(total * 0.15);
+    const missed = Math.floor(total * 0.10);
+    const notStarted = total - met - inProgress - missed;
+    
+    return {
+      total,
+      met,
+      missed,
+      notStarted,
+      inProgress
+    };
+  }, [selectedBusinessArea]);
 
   // Calculate business area statistics
   const businessAreaStats = useMemo(() => {
     return businessAreas.map((ba) => {
       const areaActivities = getActivitiesForBusinessArea(ba);
-      // For now, use mock data - in real app, would calculate from actual job statuses
-      const slaMet = Math.floor(areaActivities.length * 0.7);
-      const slaMissed = areaActivities.length - slaMet;
+      // Use same percentages as overall stats for consistency
+      const slaMet = Math.floor(areaActivities.length * 0.70);
+      const slaMissed = Math.floor(areaActivities.length * 0.10);
       
       return {
         id: ba,
@@ -172,8 +180,9 @@ function AppContent() {
     return Array.from(appIds).map((appId) => {
       const app = applications.find((a) => a.id === appId);
       const appActivities = areaActivities.filter((a) => a.appId === appId);
-      const slaMet = Math.floor(appActivities.length * 0.75);
-      const slaMissed = appActivities.length - slaMet;
+      // Use same percentages as overall stats for consistency
+      const slaMet = Math.floor(appActivities.length * 0.70);
+      const slaMissed = Math.floor(appActivities.length * 0.10);
       
       return {
         id: appId,
