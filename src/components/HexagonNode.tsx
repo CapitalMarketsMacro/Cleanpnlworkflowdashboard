@@ -1,5 +1,11 @@
 import { memo } from 'react';
 import { Handle, Position } from 'reactflow';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from './ui/tooltip';
 
 interface HexagonNodeProps {
   data: {
@@ -9,13 +15,14 @@ interface HexagonNodeProps {
     slaMet?: number;
     slaMissed?: number;
     inProgress?: number;
+    notStarted?: number;
     color?: 'pink' | 'blue' | 'purple' | 'gray' | 'red' | 'green' | 'lavender';
     size?: 'small' | 'medium' | 'large';
   };
 }
 
 export const HexagonNode = memo(({ data }: HexagonNodeProps) => {
-  const { label, color = 'blue', size = 'medium', activityCount, slaMet, slaMissed, inProgress } = data;
+  const { label, color = 'blue', size = 'medium', activityCount, slaMet, slaMissed, inProgress, notStarted } = data;
   
   // Color schemes
   const colorSchemes = {
@@ -86,96 +93,139 @@ export const HexagonNode = memo(({ data }: HexagonNodeProps) => {
   
   const hasStats = activityCount !== undefined;
   
-  return (
-    <div style={{ width: sizeSettings.width, height: sizeSettings.height }}>
-      {/* Handles for connections */}
-      <Handle
-        type="target"
-        position={Position.Left}
-        id="left"
-        style={{ 
-          background: colorScheme.border, 
-          width: 8, 
-          height: 8,
-          left: -4
-        }}
-      />
-      <Handle
-        type="source"
-        position={Position.Right}
-        id="right"
-        style={{ 
-          background: colorScheme.border, 
-          width: 8, 
-          height: 8,
-          right: -4
-        }}
-      />
-      <Handle
-        type="target"
-        position={Position.Top}
-        id="top"
-        style={{ 
-          background: colorScheme.border, 
-          width: 8, 
-          height: 8,
-          top: -4
-        }}
-      />
-      <Handle
-        type="source"
-        position={Position.Bottom}
-        id="bottom"
-        style={{ 
-          background: colorScheme.border, 
-          width: 8, 
-          height: 8,
-          bottom: -4
-        }}
-      />
-      
-      {/* Hexagon SVG */}
-      <svg 
-        width={sizeSettings.width} 
-        height={sizeSettings.height}
-        style={{ 
-          filter: color === 'red' ? 'drop-shadow(0px 0px 12px rgba(220, 38, 38, 0.6))' : 'drop-shadow(0px 2px 4px rgba(0, 0, 0, 0.2))',
-          transition: 'transform 0.2s'
-        }}
-        className="hover:scale-105 cursor-pointer"
-      >
-        <path
-          d={createHexagonPath(sizeSettings.width, sizeSettings.height)}
-          fill={colorScheme.bg}
-          stroke={colorScheme.border}
-          strokeWidth={color === 'red' ? 3 : 2}
-        />
-        <text
-          x={sizeSettings.width / 2}
-          y={hasStats ? sizeSettings.height / 2 - 8 : sizeSettings.height / 2}
-          textAnchor="middle"
-          dominantBaseline="middle"
-          fill={colorScheme.text}
-          fontSize={sizeSettings.fontSize}
-          fontWeight={color === 'red' ? 'bold' : '600'}
-        >
-          {label}
-        </text>
-        {hasStats && (
-          <text
-            x={sizeSettings.width / 2}
-            y={sizeSettings.height / 2 + 10}
-            textAnchor="middle"
-            dominantBaseline="middle"
-            fill={colorScheme.text}
-            fontSize={9}
-            opacity={0.8}
-          >
-            {activityCount} jobs
-          </text>
-        )}
-      </svg>
+  // Create tooltip content
+  const tooltipContent = hasStats ? (
+    <div className="p-2">
+      <div className="mb-2">
+        <strong>{label}</strong>
+      </div>
+      <div className="space-y-1 text-sm">
+        <div className="flex justify-between gap-4">
+          <span>Total Jobs:</span>
+          <span className="font-semibold">{activityCount || 0}</span>
+        </div>
+        <div className="h-px bg-gray-300 my-1" />
+        <div className="flex justify-between gap-4">
+          <span className="text-green-600">✓ SLA Met:</span>
+          <span className="font-semibold text-green-600">{slaMet || 0}</span>
+        </div>
+        <div className="flex justify-between gap-4">
+          <span className="text-blue-600">⟳ In Progress:</span>
+          <span className="font-semibold text-blue-600">{inProgress || 0}</span>
+        </div>
+        <div className="flex justify-between gap-4">
+          <span className="text-red-600">✗ SLA Missed:</span>
+          <span className="font-semibold text-red-600">{slaMissed || 0}</span>
+        </div>
+        <div className="flex justify-between gap-4">
+          <span className="text-gray-500">○ Not Started:</span>
+          <span className="font-semibold text-gray-500">{notStarted || 0}</span>
+        </div>
+      </div>
     </div>
+  ) : null;
+  
+  return (
+    <TooltipProvider delayDuration={200}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div style={{ width: sizeSettings.width, height: sizeSettings.height }}>
+            {/* Handles for connections */}
+            <Handle
+              type="target"
+              position={Position.Left}
+              id="left"
+              style={{ 
+                background: colorScheme.border, 
+                width: 8, 
+                height: 8,
+                left: -4
+              }}
+            />
+            <Handle
+              type="source"
+              position={Position.Right}
+              id="right"
+              style={{ 
+                background: colorScheme.border, 
+                width: 8, 
+                height: 8,
+                right: -4
+              }}
+            />
+            <Handle
+              type="target"
+              position={Position.Top}
+              id="top"
+              style={{ 
+                background: colorScheme.border, 
+                width: 8, 
+                height: 8,
+                top: -4
+              }}
+            />
+            <Handle
+              type="source"
+              position={Position.Bottom}
+              id="bottom"
+              style={{ 
+                background: colorScheme.border, 
+                width: 8, 
+                height: 8,
+                bottom: -4
+              }}
+            />
+            
+            {/* Hexagon SVG */}
+            <svg 
+              width={sizeSettings.width} 
+              height={sizeSettings.height}
+              style={{ 
+                filter: color === 'red' ? 'drop-shadow(0px 0px 12px rgba(220, 38, 38, 0.6))' : 'drop-shadow(0px 2px 4px rgba(0, 0, 0, 0.2))',
+                transition: 'transform 0.2s'
+              }}
+              className="hover:scale-105 cursor-pointer"
+            >
+              <path
+                d={createHexagonPath(sizeSettings.width, sizeSettings.height)}
+                fill={colorScheme.bg}
+                stroke={colorScheme.border}
+                strokeWidth={color === 'red' ? 3 : 2}
+              />
+              <text
+                x={sizeSettings.width / 2}
+                y={hasStats ? sizeSettings.height / 2 - 8 : sizeSettings.height / 2}
+                textAnchor="middle"
+                dominantBaseline="middle"
+                fill={colorScheme.text}
+                fontSize={sizeSettings.fontSize}
+                fontWeight={color === 'red' ? 'bold' : '600'}
+              >
+                {label}
+              </text>
+              {hasStats && (
+                <text
+                  x={sizeSettings.width / 2}
+                  y={sizeSettings.height / 2 + 10}
+                  textAnchor="middle"
+                  dominantBaseline="middle"
+                  fill={colorScheme.text}
+                  fontSize={9}
+                  opacity={0.8}
+                >
+                  {activityCount} jobs
+                </text>
+              )}
+            </svg>
+          </div>
+        </TooltipTrigger>
+        {tooltipContent && (
+          <TooltipContent side="right" className="max-w-xs">
+            {tooltipContent}
+          </TooltipContent>
+        )}
+      </Tooltip>
+    </TooltipProvider>
   );
 });
 

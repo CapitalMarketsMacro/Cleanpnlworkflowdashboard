@@ -1,11 +1,13 @@
 import { Node, Edge } from 'reactflow';
 import { activities, applications, downstreamApps, getActivitiesForApplication } from './activityData';
+import { ActivityStatus } from './activityStatusApi';
 
 // Generate application detail view (when user clicks an app in column view)
 export function generateApplicationDetailView(
   businessArea: string, 
   applicationId: string, 
-  businessDate: Date
+  businessDate: Date,
+  activityStatuses?: ActivityStatus[]
 ) {
   const nodes: Node[] = [];
   const edges: Edge[] = [];
@@ -24,18 +26,28 @@ export function generateApplicationDetailView(
 
   // Create activity/job nodes
   appActivities.forEach((activity, index) => {
-    // Status distribution: 70% met, 15% in-progress, 10% missed, 5% not-started
-    const randomValue = Math.random();
+    // Get status from API if available, otherwise use default
+    const apiStatus = activityStatuses?.find(s => s.activityId === activity.id);
     let status: 'met' | 'missed' | 'in-progress' | 'not-started';
-    
-    if (randomValue < 0.70) {
-      status = 'met';
-    } else if (randomValue < 0.85) {
-      status = 'in-progress';
-    } else if (randomValue < 0.95) {
-      status = 'missed';
+    let progress: number | undefined;
+
+    if (apiStatus) {
+      status = apiStatus.status;
+      progress = apiStatus.progress;
     } else {
-      status = 'not-started';
+      // Fallback: Status distribution: 70% met, 15% in-progress, 10% missed, 5% not-started
+      const randomValue = Math.random();
+      
+      if (randomValue < 0.70) {
+        status = 'met';
+      } else if (randomValue < 0.85) {
+        status = 'in-progress';
+        progress = Math.random() * 100;
+      } else if (randomValue < 0.95) {
+        status = 'missed';
+      } else {
+        status = 'not-started';
+      }
     }
 
     nodes.push({
@@ -50,7 +62,7 @@ export function generateApplicationDetailView(
         jobId: activity.id,
         status: status,
         slaTime: `${activity.expectedStartTime} - ${activity.expectedEndTime}`,
-        progress: status === 'in-progress' ? Math.random() * 100 : undefined,
+        progress: progress,
       },
     });
 

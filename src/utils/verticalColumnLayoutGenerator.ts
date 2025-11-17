@@ -1,9 +1,11 @@
 import { Node, Edge } from 'reactflow';
 import { applications, activities, getActivitiesForApplication, SwimLaneType } from './activityData';
+import { ActivityStatus, calculateStatsFromStatuses } from './activityStatusApi';
 
 export function generateVerticalColumnLayout(
   businessArea: string,
-  selectedDate: Date
+  selectedDate: Date,
+  activityStatuses?: ActivityStatus[]
 ): { nodes: Node[]; edges: Edge[] } {
   const nodes: Node[] = [];
   const edges: Edge[] = [];
@@ -41,9 +43,17 @@ export function generateVerticalColumnLayout(
   const tradeCol = columns[0];
   const tradeStartY = HEADER_HEIGHT + 50;
   
-  // Get activity counts for ENDUR
+  // Get activity counts and statuses for ENDUR
   const endurTradeActivities = getActivitiesForApplication('Endur-Trade');
   const endurRiskActivities = getActivitiesForApplication('Endur-Risk');
+  const allEndurActivities = [...endurTradeActivities, ...endurRiskActivities];
+  
+  // Calculate status counts for ENDUR from activity statuses
+  const endurStatusStats = activityStatuses ? (() => {
+    const endurActivityIds = allEndurActivities.map(a => a.id);
+    const endurStatuses = activityStatuses.filter(s => endurActivityIds.includes(s.activityId));
+    return calculateStatsFromStatuses(endurStatuses);
+  })() : { total: allEndurActivities.length, met: 0, missed: 0, inProgress: 0, notStarted: allEndurActivities.length };
   
   // Endur (Trade Events)
   nodes.push({
@@ -55,7 +65,11 @@ export function generateVerticalColumnLayout(
       application: 'Endur-Trade',
       color: 'pink',
       size: 'medium',
-      activityCount: endurTradeActivities.length,
+      activityCount: allEndurActivities.length,
+      slaMet: endurStatusStats.met,
+      slaMissed: endurStatusStats.missed,
+      inProgress: endurStatusStats.inProgress,
+      notStarted: endurStatusStats.notStarted,
     },
     draggable: false,
   });

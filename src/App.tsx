@@ -32,6 +32,11 @@ import {
   applications,
   activities,
 } from './utils/activityData';
+import { 
+  fetchActivityStatus, 
+  calculateStatsFromStatuses, 
+  ActivityStatus 
+} from './utils/activityStatusApi';
 
 const nodeTypes = {
   businessArea: BusinessAreaNode,
@@ -52,6 +57,7 @@ function AppContent() {
   const [businessDate, setBusinessDate] = useState<Date>(new Date());
   const [selectedBusinessArea, setSelectedBusinessArea] = useState<string | null>('Commodities');
   const [selectedApplication, setSelectedApplication] = useState<string | null>(null);
+  const [activityStatuses, setActivityStatuses] = useState<ActivityStatus[]>([]);
 
   // Initialize data based on business date and selections
   useEffect(() => {
@@ -67,7 +73,8 @@ function AppContent() {
       // Show vertical column layout for selected business area
       const result = generateVerticalColumnLayout(
         selectedBusinessArea,
-        businessDate
+        businessDate,
+        activityStatuses
       );
       initialNodes = result.nodes;
       initialEdges = result.edges;
@@ -76,7 +83,8 @@ function AppContent() {
       const result = generateApplicationDetailView(
         selectedBusinessArea,
         selectedApplication!,
-        businessDate
+        businessDate,
+        activityStatuses
       );
       initialNodes = result.nodes;
       initialEdges = result.edges;
@@ -85,92 +93,122 @@ function AppContent() {
     setAllNodes(initialNodes);
     setAllEdges(initialEdges);
     setLastUpdate(new Date());
-  }, [businessDate, selectedBusinessArea, selectedApplication]);
+  }, [businessDate, selectedBusinessArea, selectedApplication, activityStatuses]);
 
-  // Simulate real-time updates only for current business date
+  // Poll REST API for activity status updates every 10 seconds
   useEffect(() => {
-    const isToday = businessDate.toDateString() === new Date().toDateString();
+    let isFirstFetch = true;
     
-    if (!isToday) return; // Don't update if viewing historical data
-    
-    const interval = setInterval(() => {
-      setAllNodes((currentNodes) =>
-        currentNodes.map((node) => {
-          if (node.type === 'job' || (node.type === 'activity' && node.data.status)) {
-            // Randomly update job statuses
-            const random = Math.random();
-            let newStatus = node.data.status;
-            
-            if (node.data.status === 'not-started' && random > 0.7) {
-              newStatus = 'in-progress';
-            } else if (node.data.status === 'in-progress' && random > 0.8) {
-              newStatus = random > 0.5 ? 'met' : 'missed';
-            }
-
-            if (newStatus !== node.data.status) {
-              return {
-                ...node,
-                data: {
-                  ...node.data,
-                  status: newStatus,
-                  progress: newStatus === 'in-progress' ? Math.random() * 100 : node.data.progress,
-                },
-              };
-            }
-          }
-          return node;
-        })
-      );
+    // Initial fetch
+    const fetchStatus = async () => {
+      const statuses = await fetchActivityStatus();
+      setActivityStatuses(statuses);
       setLastUpdate(new Date());
-    }, 3000);
+      
+      // Show notification for first successful fetch
+      if (isFirstFetch && statuses.length > 0) {
+        toast.success(`Activity status loaded: ${statuses.length} activities`);
+        isFirstFetch = false;
+      }
+    };
+
+    fetchStatus();
+
+    // Poll every 10 seconds
+    const interval = setInterval(fetchStatus, 10000);
 
     return () => clearInterval(interval);
   }, [businessDate]);
 
-  // Calculate statistics based on activities
-  const stats = useMemo(() => {
-    // Get activities for current business area or all activities
-    const relevantActivities = selectedBusinessArea 
-      ? getActivitiesForBusinessArea(selectedBusinessArea)
-      : activities;
-    
-    const total = relevantActivities.length;
-    
-    // Simulate statuses based on time (in real app, this would come from actual job execution data)
-    // For demo: 70% met, 15% in-progress, 10% missed, 5% not-started
-    const met = Math.floor(total * 0.70);
-    const inProgress = Math.floor(total * 0.15);
-    const missed = Math.floor(total * 0.10);
-    const notStarted = total - met - inProgress - missed;
-    
-    return {
-      total,
-      met,
-      missed,
-      notStarted,
-      inProgress
-    };
-  }, [selectedBusinessArea]);
+  // Update nodes when activity statuses change
+  useEffect(() => {
+    if (activityStatuses.length === 0) return;
 
-  // Calculate business area statistics
+    setAllNodes((currentNodes) =>
+      currentNodes.map((node) => {
+        if (node.type === 'job' || (node.type === 'activity' && node.data.jobId)) {
+          const activityId = node.data.jobId || node.id;
+          const statusUpdate = activityStatuses.find(s => s.activityId === activityId);
+          
+          if (statusUpdate) {
+            return {
+              ...node,
+              data: {
+                ...node.data,
+                status: statusUpdate.status,
+                progress: statusUpdate.progress,
+              },
+            };
+          }
+        }
+        return node;
+      })
+    );
+  }, [activityStatuses]);
+
+  // Calculate statistics based on API activity statuses
+  const stats = useMemo(() => {
+    if (activityStatuses.length === 0) {
+      // Default to all activities if no API data yet
+      const relevantActivities = selectedBusinessArea 
+        ? getActivitiesForBusinessArea(selectedBusinessArea)
+        : activities;
+      
+      return {
+        total: relevantActivities.length,
+        met: 0,
+        missed: 0,
+        notStarted: relevantActivities.length,
+        inProgress: 0
+      };
+    }
+
+    // Filter statuses by selected business area if applicable
+    const relevantStatuses = selectedBusinessArea
+      ? activityStatuses.filter(status => {
+          const activity = activities.find(a => a.id === status.activityId);
+          return activity?.businessArea === selectedBusinessArea;
+        })
+      : activityStatuses;
+    
+    return calculateStatsFromStatuses(relevantStatuses);
+  }, [activityStatuses, selectedBusinessArea]);
+
+  // Calculate business area statistics from API data
   const businessAreaStats = useMemo(() => {
     return businessAreas.map((ba) => {
       const areaActivities = getActivitiesForBusinessArea(ba);
-      // Use same percentages as overall stats for consistency
-      const slaMet = Math.floor(areaActivities.length * 0.70);
-      const slaMissed = Math.floor(areaActivities.length * 0.10);
+      
+      if (activityStatuses.length === 0) {
+        // Default values if no API data yet
+        return {
+          id: ba,
+          name: ba,
+          jobCount: areaActivities.length,
+          slaMet: 0,
+          slaMissed: 0,
+        };
+      }
+
+      // Get statuses for this business area
+      const areaStatuses = activityStatuses.filter(status => {
+        const activity = activities.find(a => a.id === status.activityId);
+        return activity?.businessArea === ba;
+      });
+
+      const stats = calculateStatsFromStatuses(areaStatuses);
       
       return {
         id: ba,
         name: ba,
         jobCount: areaActivities.length,
-        slaMet,
-        slaMissed,
+        slaMet: stats.met,
+        slaMissed: stats.missed,
       };
     });
-  }, []);
+  }, [activityStatuses]);
 
-  // Calculate application statistics for selected business area
+  // Calculate application statistics for selected business area from API data
   const applicationStats = useMemo(() => {
     if (!selectedBusinessArea) return [];
     
@@ -180,20 +218,37 @@ function AppContent() {
     return Array.from(appIds).map((appId) => {
       const app = applications.find((a) => a.id === appId);
       const appActivities = areaActivities.filter((a) => a.appId === appId);
-      // Use same percentages as overall stats for consistency
-      const slaMet = Math.floor(appActivities.length * 0.70);
-      const slaMissed = Math.floor(appActivities.length * 0.10);
+      
+      if (activityStatuses.length === 0) {
+        // Default values if no API data yet
+        return {
+          id: appId,
+          name: app?.name || appId,
+          activityCount: appActivities.length,
+          activityTypes: [app?.swimlane || 'Unknown'],
+          slaMet: 0,
+          slaMissed: 0,
+        };
+      }
+
+      // Get statuses for this application
+      const appStatuses = activityStatuses.filter(status => {
+        const activity = activities.find(a => a.id === status.activityId);
+        return activity?.appId === appId;
+      });
+
+      const stats = calculateStatsFromStatuses(appStatuses);
       
       return {
         id: appId,
         name: app?.name || appId,
         activityCount: appActivities.length,
         activityTypes: [app?.swimlane || 'Unknown'],
-        slaMet,
-        slaMissed,
+        slaMet: stats.met,
+        slaMissed: stats.missed,
       };
     });
-  }, [selectedBusinessArea]);
+  }, [selectedBusinessArea, activityStatuses]);
 
   const handleSelectBusinessArea = (areaId: string | null) => {
     setSelectedBusinessArea(areaId);
