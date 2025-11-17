@@ -35,7 +35,8 @@ import {
 import { 
   fetchActivityStatus, 
   calculateStatsFromStatuses, 
-  ActivityStatus 
+  ActivityStatus,
+  getSimulationElapsedSeconds
 } from './utils/activityStatusApi';
 
 const nodeTypes = {
@@ -58,6 +59,8 @@ function AppContent() {
   const [selectedBusinessArea, setSelectedBusinessArea] = useState<string | null>('Commodities');
   const [selectedApplication, setSelectedApplication] = useState<string | null>(null);
   const [activityStatuses, setActivityStatuses] = useState<ActivityStatus[]>([]);
+  const [isFetchingData, setIsFetchingData] = useState(false);
+  const [simulationElapsed, setSimulationElapsed] = useState(0);
 
   // Initialize data based on business date and selections
   useEffect(() => {
@@ -101,14 +104,20 @@ function AppContent() {
     
     // Initial fetch
     const fetchStatus = async () => {
-      const statuses = await fetchActivityStatus();
-      setActivityStatuses(statuses);
-      setLastUpdate(new Date());
-      
-      // Show notification for first successful fetch
-      if (isFirstFetch && statuses.length > 0) {
-        toast.success(`Activity status loaded: ${statuses.length} activities`);
-        isFirstFetch = false;
+      setIsFetchingData(true);
+      try {
+        const statuses = await fetchActivityStatus();
+        setActivityStatuses(statuses);
+        setLastUpdate(new Date());
+        setSimulationElapsed(getSimulationElapsedSeconds());
+        
+        // Show notification for first successful fetch
+        if (isFirstFetch && statuses.length > 0) {
+          toast.success(`Activity status loaded: ${statuses.length} activities`);
+          isFirstFetch = false;
+        }
+      } finally {
+        setIsFetchingData(false);
       }
     };
 
@@ -275,7 +284,8 @@ function AppContent() {
       toast.success(`Viewing ${baName} activities by type`);
     } else if (node.type === 'application' || node.type === 'hexagon') {
       // Navigate to application detail (activity & jobs view)
-      const appId = node.data.label || node.data.application;
+      // Prefer application ID over label (important for Endur-Trade/Endur-Risk)
+      const appId = node.data.application || node.data.label;
       
       // Skip if it's a hub node or doesn't have an app name
       if (!appId || appId === '') return;
@@ -323,6 +333,7 @@ function AppContent() {
         selectedBusinessArea={selectedBusinessArea}
         businessAreaName={selectedBusinessArea}
         selectedApplication={selectedApplication}
+        isFetchingData={isFetchingData}
       />
       
       <div className="flex-1 flex overflow-hidden">
@@ -372,8 +383,41 @@ function AppContent() {
               zoomable
               pannable
             />
+            
+            {/* Data Fetching Indicator */}
+            {isFetchingData && (
+              <Panel position="top-left" className="m-4">
+                <div className="bg-blue-600 dark:bg-blue-700 text-white px-4 py-2 rounded-lg shadow-lg border border-blue-500 dark:border-blue-600 flex items-center gap-2 animate-pulse">
+                  <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  <span className="text-sm font-medium">Fetching activity status...</span>
+                </div>
+              </Panel>
+            )}
             <Panel position="bottom-right" className="bg-white dark:bg-slate-800 p-3 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 m-4">
               <div className="space-y-2">
+                {/* Simulation Progress */}
+                {simulationElapsed < 60 && (
+                  <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 p-2 rounded mb-2">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs font-medium text-blue-700 dark:text-blue-300">
+                        Simulation Progress
+                      </span>
+                      <span className="text-xs text-blue-600 dark:text-blue-400">
+                        {simulationElapsed}s / 60s
+                      </span>
+                    </div>
+                    <div className="w-full bg-blue-200 dark:bg-blue-900 rounded-full h-1.5">
+                      <div 
+                        className="bg-blue-600 dark:bg-blue-500 h-1.5 rounded-full transition-all duration-300"
+                        style={{ width: `${Math.min((simulationElapsed / 60) * 100, 100)}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                )}
+                
                 <div className="border-b border-slate-200 dark:border-slate-700 pb-1.5 mb-1.5">
                   <span className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">
                     {selectedBusinessArea && !selectedApplication ? 'Column View' : 'Status Legend'}

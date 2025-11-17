@@ -43,19 +43,18 @@ export function generateVerticalColumnLayout(
   const tradeCol = columns[0];
   const tradeStartY = HEADER_HEIGHT + 50;
   
-  // Get activity counts and statuses for ENDUR
+  // Get activity counts and statuses for ENDUR (separate Trade and Risk)
   const endurTradeActivities = getActivitiesForApplication('Endur-Trade');
   const endurRiskActivities = getActivitiesForApplication('Endur-Risk');
-  const allEndurActivities = [...endurTradeActivities, ...endurRiskActivities];
   
-  // Calculate status counts for ENDUR from activity statuses
-  const endurStatusStats = activityStatuses ? (() => {
-    const endurActivityIds = allEndurActivities.map(a => a.id);
-    const endurStatuses = activityStatuses.filter(s => endurActivityIds.includes(s.activityId));
-    return calculateStatsFromStatuses(endurStatuses);
-  })() : { total: allEndurActivities.length, met: 0, missed: 0, inProgress: 0, notStarted: allEndurActivities.length };
+  // Calculate status counts for ENDUR Trade activities only (for Trade Events column)
+  const endurTradeStatusStats = activityStatuses ? (() => {
+    const endurTradeActivityIds = endurTradeActivities.map(a => a.id);
+    const endurTradeStatuses = activityStatuses.filter(s => endurTradeActivityIds.includes(s.activityId));
+    return calculateStatsFromStatuses(endurTradeStatuses);
+  })() : { total: endurTradeActivities.length, met: 0, missed: 0, inProgress: 0, notStarted: endurTradeActivities.length };
   
-  // Endur (Trade Events)
+  // Endur (Trade Events) - Shows only Trade type jobs
   nodes.push({
     id: 'node-Endur-Trade',
     type: 'hexagon',
@@ -65,11 +64,11 @@ export function generateVerticalColumnLayout(
       application: 'Endur-Trade',
       color: 'pink',
       size: 'medium',
-      activityCount: allEndurActivities.length,
-      slaMet: endurStatusStats.met,
-      slaMissed: endurStatusStats.missed,
-      inProgress: endurStatusStats.inProgress,
-      notStarted: endurStatusStats.notStarted,
+      activityCount: endurTradeActivities.length,
+      slaMet: endurTradeStatusStats.met,
+      slaMissed: endurTradeStatusStats.missed,
+      inProgress: endurTradeStatusStats.inProgress,
+      notStarted: endurTradeStatusStats.notStarted,
     },
     draggable: false,
   });
@@ -147,7 +146,14 @@ export function generateVerticalColumnLayout(
   const riskCol = columns[1];
   const riskStartY = HEADER_HEIGHT + 50;
   
-  // Endur (Risk Engines)
+  // Calculate status counts for ENDUR Risk activities only (for Risk Engines column)
+  const endurRiskStatusStats = activityStatuses ? (() => {
+    const endurRiskActivityIds = endurRiskActivities.map(a => a.id);
+    const endurRiskStatuses = activityStatuses.filter(s => endurRiskActivityIds.includes(s.activityId));
+    return calculateStatsFromStatuses(endurRiskStatuses);
+  })() : { total: endurRiskActivities.length, met: 0, missed: 0, inProgress: 0, notStarted: endurRiskActivities.length };
+  
+  // Endur (Risk Engines) - Shows only Risk type jobs
   nodes.push({
     id: 'node-Endur-Risk',
     type: 'hexagon',
@@ -158,6 +164,10 @@ export function generateVerticalColumnLayout(
       color: 'blue',
       size: 'medium',
       activityCount: endurRiskActivities.length,
+      slaMet: endurRiskStatusStats.met,
+      slaMissed: endurRiskStatusStats.missed,
+      inProgress: endurRiskStatusStats.inProgress,
+      notStarted: endurRiskStatusStats.notStarted,
     },
     draggable: false,
   });

@@ -1,7 +1,8 @@
-import { Clock, TrendingUp, AlertCircle, CheckCircle2, Circle, PlayCircle, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Moon, Sun } from 'lucide-react';
+import { Clock, TrendingUp, AlertCircle, CheckCircle2, Circle, PlayCircle, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Moon, Sun, RefreshCw } from 'lucide-react';
 import { Calendar } from './ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Button } from './ui/button';
+import { Badge } from './ui/badge';
 import { BusinessDateIndicator } from './BusinessDateIndicator';
 import { QuickDateNav } from './QuickDateNav';
 import { useTheme } from '../utils/ThemeContext';
@@ -20,9 +21,10 @@ interface DashboardProps {
   selectedBusinessArea: string | null;
   businessAreaName: string | null;
   selectedApplication?: string | null;
+  isFetchingData?: boolean;
 }
 
-export function Dashboard({ stats, lastUpdate, businessDate, onBusinessDateChange, selectedBusinessArea, businessAreaName, selectedApplication }: DashboardProps) {
+export function Dashboard({ stats, lastUpdate, businessDate, onBusinessDateChange, selectedBusinessArea, businessAreaName, selectedApplication, isFetchingData }: DashboardProps) {
   const { theme, toggleTheme } = useTheme();
   const successRate = stats.total > 0 ? ((stats.met / (stats.met + stats.missed)) * 100).toFixed(1) : '0';
   
@@ -59,6 +61,12 @@ export function Dashboard({ stats, lastUpdate, businessDate, onBusinessDateChang
                   : 'All Business Areas'
                 }
               </span>
+              {isFetchingData && (
+                <Badge variant="outline" className="bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-700 animate-pulse">
+                  <RefreshCw className="w-3 h-3 mr-1 animate-spin" />
+                  Fetching data...
+                </Badge>
+              )}
             </div>
           </div>
           <div className="flex items-center gap-2">

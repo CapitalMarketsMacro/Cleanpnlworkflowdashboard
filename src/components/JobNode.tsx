@@ -1,5 +1,11 @@
 import { Handle, Position } from 'reactflow';
 import { Clock, CheckCircle2, XCircle, Circle } from 'lucide-react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from './ui/tooltip';
 
 type JobStatus = 'met' | 'missed' | 'not-started' | 'in-progress';
 
@@ -10,6 +16,11 @@ interface JobNodeProps {
     status: JobStatus;
     slaTime?: string;
     progress?: number;
+    activityType?: string;
+    businessStepId?: string;
+    businessStepDescription?: string;
+    expectedStartTime?: string;
+    expectedEndTime?: string;
   };
 }
 
@@ -55,19 +66,22 @@ export function JobNode({ data }: JobNodeProps) {
   const Icon = config.icon;
 
   return (
-    <div className={`${config.bg} rounded-lg shadow-md border-2 ${config.border} min-w-[200px]`}>
-      <Handle
-        type="target"
-        position={Position.Left}
-        className={`!${config.border.replace('border-', 'bg-')} !w-3 !h-3`}
-      />
-      <div className="p-3">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-xs uppercase tracking-wide text-slate-600">Job</span>
-          <Icon className={`w-4 h-4 ${config.iconColor}`} />
-        </div>
-        <div className={`${config.text} mb-1`}>{data.label}</div>
-        <div className="text-xs text-slate-600 mb-2">ID: {data.jobId}</div>
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div className={`${config.bg} rounded-lg shadow-md border-2 ${config.border} min-w-[200px] cursor-pointer`}>
+            <Handle
+              type="target"
+              position={Position.Left}
+              className={`!${config.border.replace('border-', 'bg-')} !w-3 !h-3`}
+            />
+            <div className="p-3">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs uppercase tracking-wide text-slate-600">Job</span>
+                <Icon className={`w-4 h-4 ${config.iconColor}`} />
+              </div>
+              <div className={`${config.text} mb-1`}>{data.label}</div>
+              <div className="text-xs text-slate-600 mb-2">ID: {data.jobId}</div>
         
         {data.status === 'in-progress' && data.progress !== undefined && (
           <div className="mt-2">
@@ -94,6 +108,70 @@ export function JobNode({ data }: JobNodeProps) {
           {config.label}
         </div>
       </div>
-    </div>
+          </div>
+        </TooltipTrigger>
+        <TooltipContent side="right" className="max-w-sm">
+          <div className="space-y-2">
+            <div className="font-semibold border-b pb-1">{data.label}</div>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className="text-slate-500">Activity ID:</div>
+              <div className="font-mono">{data.jobId}</div>
+              
+              {data.businessStepId && (
+                <>
+                  <div className="text-slate-500">Business Step:</div>
+                  <div className="font-mono">{data.businessStepId}</div>
+                </>
+              )}
+              
+              {data.businessStepDescription && (
+                <>
+                  <div className="text-slate-500">Step Description:</div>
+                  <div>{data.businessStepDescription}</div>
+                </>
+              )}
+              
+              {data.activityType && (
+                <>
+                  <div className="text-slate-500">Activity Type:</div>
+                  <div className="uppercase">{data.activityType}</div>
+                </>
+              )}
+              
+              {data.expectedStartTime && (
+                <>
+                  <div className="text-slate-500">Expected Start:</div>
+                  <div>{data.expectedStartTime}</div>
+                </>
+              )}
+              
+              {data.expectedEndTime && (
+                <>
+                  <div className="text-slate-500">Expected End:</div>
+                  <div>{data.expectedEndTime}</div>
+                </>
+              )}
+              
+              {data.slaTime && (
+                <>
+                  <div className="text-slate-500">SLA Time:</div>
+                  <div>{data.slaTime}</div>
+                </>
+              )}
+              
+              <div className="text-slate-500">Status:</div>
+              <div className={`${config.iconColor} font-semibold`}>{config.label}</div>
+              
+              {data.status === 'in-progress' && data.progress !== undefined && (
+                <>
+                  <div className="text-slate-500">Progress:</div>
+                  <div>{Math.round(data.progress)}%</div>
+                </>
+              )}
+            </div>
+          </div>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 }

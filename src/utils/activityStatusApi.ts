@@ -79,6 +79,11 @@ function getElapsedSeconds(): number {
   return Math.floor((Date.now() - simulationStartTime) / 1000);
 }
 
+// Export elapsed seconds for external use
+export function getSimulationElapsedSeconds(): number {
+  return getElapsedSeconds();
+}
+
 // Simulate activity progression over 1 minute
 function getSimulatedStatus(activityIndex: number, totalActivities: number): {
   activityStatus: ActivityStatusResponse["Activity Status"];

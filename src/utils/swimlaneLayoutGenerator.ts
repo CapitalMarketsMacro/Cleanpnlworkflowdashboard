@@ -63,6 +63,11 @@ export function generateApplicationDetailView(
         status: status,
         slaTime: `${activity.expectedStartTime} - ${activity.expectedEndTime}`,
         progress: progress,
+        activityType: activity.activityType,
+        businessStepId: activity.businessStepId,
+        businessStepDescription: activity.businessStepDescription,
+        expectedStartTime: activity.expectedStartTime,
+        expectedEndTime: activity.expectedEndTime,
       },
     });
 
