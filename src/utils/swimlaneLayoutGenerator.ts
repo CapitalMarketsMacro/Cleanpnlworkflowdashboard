@@ -9,15 +9,24 @@ export function generateApplicationDetailView(
   businessDate: Date,
   activityStatuses?: ActivityStatus[]
 ) {
+  console.log('=== generateApplicationDetailView called ===');
+  console.log('businessArea:', businessArea);
+  console.log('applicationId:', applicationId);
+  console.log('activityStatuses count:', activityStatuses?.length || 0);
+  
   const nodes: Node[] = [];
   const edges: Edge[] = [];
 
   const isToday = businessDate.toDateString() === new Date().toDateString();
   
   // Get activities for this app and business area
-  const appActivities = getActivitiesForApplication(applicationId).filter(
+  const allActivitiesForApp = getActivitiesForApplication(applicationId);
+  console.log('All activities for app:', allActivitiesForApp.length, allActivitiesForApp);
+  
+  const appActivities = allActivitiesForApp.filter(
     a => a.businessArea === businessArea
   );
+  console.log('Filtered activities for business area:', appActivities.length, appActivities);
 
   // Layout constants
   const JOB_NODE_HEIGHT = 80;
@@ -139,5 +148,10 @@ export function generateApplicationDetailView(
     });
   }
 
+  console.log('=== Returning from generateApplicationDetailView ===');
+  console.log('Total nodes:', nodes.length);
+  console.log('Total edges:', edges.length);
+  console.log('Nodes:', nodes);
+  
   return { nodes, edges };
 }

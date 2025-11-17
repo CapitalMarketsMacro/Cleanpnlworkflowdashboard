@@ -29,6 +29,7 @@ import { generateVerticalColumnLayout } from './utils/verticalColumnLayoutGenera
 import { 
   businessAreas, 
   getActivitiesForBusinessArea,
+  getActivitiesForApplication,
   applications,
   activities,
 } from './utils/activityData';
@@ -64,15 +65,21 @@ function AppContent() {
 
   // Initialize data based on business date and selections
   useEffect(() => {
+    console.log('=== Layout useEffect triggered ===');
+    console.log('selectedBusinessArea:', selectedBusinessArea);
+    console.log('selectedApplication:', selectedApplication);
+    
     let initialNodes: Node[];
     let initialEdges: Edge[];
 
     if (!selectedBusinessArea) {
+      console.log('Generating business area overview');
       // Show all business areas
       const result = generateWorkflowData(businessDate, null, null);
       initialNodes = result.nodes;
       initialEdges = result.edges;
     } else if (selectedBusinessArea && !selectedApplication) {
+      console.log('Generating vertical column layout for:', selectedBusinessArea);
       // Show vertical column layout for selected business area
       const result = generateVerticalColumnLayout(
         selectedBusinessArea,
@@ -82,6 +89,9 @@ function AppContent() {
       initialNodes = result.nodes;
       initialEdges = result.edges;
     } else {
+      console.log('Generating application detail view');
+      console.log('Business Area:', selectedBusinessArea);
+      console.log('Application:', selectedApplication);
       // Show application detail view
       const result = generateApplicationDetailView(
         selectedBusinessArea,
@@ -275,6 +285,8 @@ function AppContent() {
 
   const handleNodeDoubleClick = useCallback((event: React.MouseEvent, node: Node) => {
     console.log('Double clicked node:', node);
+    console.log('Node type:', node.type);
+    console.log('Node data:', node.data);
     
     if (node.type === 'businessArea') {
       // Navigate to business area detail (activity type view)
@@ -287,8 +299,18 @@ function AppContent() {
       // Prefer application ID over label (important for Endur-Trade/Endur-Risk)
       const appId = node.data.application || node.data.label;
       
+      console.log('Application ID to navigate to:', appId);
+      console.log('Current selectedBusinessArea:', selectedBusinessArea);
+      
       // Skip if it's a hub node or doesn't have an app name
-      if (!appId || appId === '') return;
+      if (!appId || appId === '') {
+        console.log('Skipping - no appId');
+        return;
+      }
+      
+      // Check if this app has activities
+      const appActivities = getActivitiesForApplication(appId);
+      console.log(`Found ${appActivities.length} activities for ${appId}:`, appActivities);
       
       setSelectedApplication(appId);
       
@@ -296,9 +318,12 @@ function AppContent() {
       // we need to determine which business area this app belongs to
       if (!selectedBusinessArea) {
         const appActivity = activities.find(a => a.appId === appId);
+        console.log('Found activity to determine business area:', appActivity);
         if (appActivity) {
           setSelectedBusinessArea(appActivity.businessArea);
           toast.success(`Viewing ${appId} activities and jobs`);
+        } else {
+          console.log('No activity found for appId:', appId);
         }
       } else {
         toast.success(`Viewing ${appId} activities and jobs`);
