@@ -391,5 +391,58 @@ export function generateVerticalColumnLayout(
     type: 'smoothstep',
   });
   
+  // --- VERTICAL SEPARATOR LINES ---
+  // These lines visually separate the columns and cross on top of TDS and DDS
+  const SEPARATOR_HEIGHT = 800; // Tall enough to span all nodes
+  const SEPARATOR_START_Y = HEADER_HEIGHT - 20; // Start just below headers
+  
+  // Separator between Trade Events and Risk Engines (crosses TDS)
+  nodes.push({
+    id: 'separator-trade-risk',
+    type: 'columnSeparator',
+    position: { 
+      x: tradeCol.x + COLUMN_WIDTH + COLUMN_SPACING / 2 - 1, 
+      y: SEPARATOR_START_Y 
+    },
+    data: {
+      height: SEPARATOR_HEIGHT,
+    },
+    draggable: false,
+    selectable: false,
+    zIndex: 10, // Higher z-index so it appears on top of TDS
+  });
+  
+  // Separator between Risk Engines and Aggregation (crosses DDS)
+  nodes.push({
+    id: 'separator-risk-agg',
+    type: 'columnSeparator',
+    position: { 
+      x: riskCol.x + COLUMN_WIDTH + COLUMN_SPACING / 2 - 1, 
+      y: SEPARATOR_START_Y 
+    },
+    data: {
+      height: SEPARATOR_HEIGHT,
+    },
+    draggable: false,
+    selectable: false,
+    zIndex: 10, // Higher z-index so it appears on top of DDS
+  });
+  
+  // Separator between Aggregation and Downstream Clients (crosses DDS-Downstream)
+  nodes.push({
+    id: 'separator-agg-down',
+    type: 'columnSeparator',
+    position: { 
+      x: aggCol.x + COLUMN_WIDTH + COLUMN_SPACING / 2 - 1, 
+      y: SEPARATOR_START_Y 
+    },
+    data: {
+      height: SEPARATOR_HEIGHT,
+    },
+    draggable: false,
+    selectable: false,
+    zIndex: 10,
+  });
+  
   return { nodes, edges };
 }
